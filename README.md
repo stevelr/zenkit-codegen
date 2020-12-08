@@ -1,5 +1,5 @@
-Code generator to create Zenkit client library in Rust, based on lists
-and fields in user workspace. Like ORM for Zenkit.
+Code generator to create Zenkit client library in Rust, based on
+user-defined workspace schema. Like ORM for Zenkit.
 
 Greatly simplifies writing reliable and performant Rust clients for Zenkit - can
 substantially reduce (by more than 50%) the amount of code required 
@@ -17,7 +17,8 @@ on the old field definition.
 
 ## Usage
 
-Install with `cargo install zk-codegen`
+Install with `cargo install zenkit-codegen`. The program name is
+`zk-codegen`.
 
 Set the environment variable `ZENKIT_API_TOKEN` to your api token,
 which you can obtain from your account profile on zenkit.com.

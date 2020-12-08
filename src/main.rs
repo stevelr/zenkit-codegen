@@ -11,9 +11,9 @@ mod templates;
 // name of the environment variable holding the token
 const ZENKIT_API_TOKEN_VAR: &str = "ZENKIT_API_TOKEN";
 
-/// Zenkit CLI
+/// Zenkit Rust-client code generator. Source and docs at https://github.com/stevelr/zenkit-codegen
 #[derive(Clap, PartialEq, Debug)]
-#[clap(name = "zk-codegen", version = "0.1")]
+#[clap(name = env!("CARGO_BIN_NAME"), version = env!("CARGO_PKG_VERSION"))]
 struct Opt {
     /// API token. Defaults to environment var ZENKIT_API_TOKEN
     #[clap(short, long)]
