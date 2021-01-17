@@ -1,6 +1,6 @@
-CHANGELOG for zenkit-codegen https://github.com/stevelr/zenkit-cli
+CHANGELOG for zenkit-codegen https://github.com/stevelr/zenkit-codegen
 
-v0.5.0 Unreleased
+v0.5.0 2021-01-17
 
 - fix: fixed label lookup
 - fix: set_choice_label(&str) renamed to set_choice,
