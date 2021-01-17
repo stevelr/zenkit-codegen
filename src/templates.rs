@@ -1,12 +1,11 @@
 use crate::Error;
 use handlebars::{Context, Handlebars, Helper, HelperResult, Output, RenderContext, RenderError};
-use inflector::cases::{
-    classcase::to_class_case,                    //
-    pascalcase::to_pascal_case,                  //
-    screamingsnakecase::to_screaming_snake_case, //
-};
+use inflector::cases::{pascalcase::to_pascal_case, screamingsnakecase::to_screaming_snake_case};
 
+/// Helper functions - "macros" used within templates
+/// These are used to ensure consistency when generating symbol names
 pub fn add_helpers(hb: &mut Handlebars) -> Result<(), Error> {
+    // to-workspace-uuid generates the workspace uuid symbol, e.g.: WORKSPACE_CUSTOMER_SUPPORT_UUID
     hb.register_helper(
         "to-workspace-uuid",
         Box::new(
@@ -30,6 +29,7 @@ pub fn add_helpers(hb: &mut Handlebars) -> Result<(), Error> {
             },
         ),
     );
+    // to-workspace-id generates the workspace id symbol, e.g.: WORKSPACE_CUSTOMER_SUPPORT_ID
     hb.register_helper(
         "to-workspace-id",
         Box::new(
@@ -53,6 +53,7 @@ pub fn add_helpers(hb: &mut Handlebars) -> Result<(), Error> {
             },
         ),
     );
+    // to-workspace-name generates the workspace name symbol, e.g.: WORKSPACE_CUSTOMER_SUPPORT_NAME
     hb.register_helper(
         "to-workspace-name",
         Box::new(
@@ -76,26 +77,7 @@ pub fn add_helpers(hb: &mut Handlebars) -> Result<(), Error> {
             },
         ),
     );
-    hb.register_helper(
-        "to-workspace-class",
-        Box::new(
-            |h: &Helper,
-             _r: &Handlebars,
-             _: &Context,
-             _rc: &mut RenderContext,
-             out: &mut dyn Output|
-             -> HelperResult {
-                out.write(&to_class_case(
-                    h.param(0)
-                        .ok_or_else(|| RenderError::new("param not found"))?
-                        .value()
-                        .as_str()
-                        .ok_or_else(|| RenderError::new("not string"))?,
-                ))?;
-                Ok(())
-            },
-        ),
-    );
+    // to-list-id generates the list id symbol, e.g.: LIST_TICKET_ID
     hb.register_helper(
         "to-list-id",
         Box::new(
@@ -119,6 +101,7 @@ pub fn add_helpers(hb: &mut Handlebars) -> Result<(), Error> {
             },
         ),
     );
+    // to-list-uuid generates the list id symbol, e.g.: LIST_TICKET_UUID
     hb.register_helper(
         "to-list-uuid",
         Box::new(
@@ -142,6 +125,7 @@ pub fn add_helpers(hb: &mut Handlebars) -> Result<(), Error> {
             },
         ),
     );
+    // to-list-class generates the list struct name, e.g.: CustomersList
     hb.register_helper(
         "to-list-class",
         Box::new(
@@ -165,26 +149,8 @@ pub fn add_helpers(hb: &mut Handlebars) -> Result<(), Error> {
             },
         ),
     );
-    hb.register_helper(
-        "to-item-class",
-        Box::new(
-            |h: &Helper,
-             _r: &Handlebars,
-             _: &Context,
-             _rc: &mut RenderContext,
-             out: &mut dyn Output|
-             -> HelperResult {
-                out.write(&to_class_case(
-                    h.param(0)
-                        .ok_or_else(|| RenderError::new("param not found"))?
-                        .value()
-                        .as_str()
-                        .ok_or_else(|| RenderError::new("not string"))?,
-                ))?;
-                Ok(())
-            },
-        ),
-    );
+    // to-list-name generates the symbol for the list name, e.g., LIST_CUSTOMER_NAME
+    // (which evalutes to the static &str)
     hb.register_helper(
         "to-list-name",
         Box::new(
@@ -208,6 +174,7 @@ pub fn add_helpers(hb: &mut Handlebars) -> Result<(), Error> {
             },
         ),
     );
+    // to-field-id generates the symbol for the field id, e.g., FIELD_TITLE_ID
     hb.register_helper(
         "to-field-id",
         Box::new(
@@ -231,6 +198,7 @@ pub fn add_helpers(hb: &mut Handlebars) -> Result<(), Error> {
             },
         ),
     );
+    // to-field-uuid generates the symbol for the field uuid, e.g., FIELD_TITLE_UUID
     hb.register_helper(
         "to-field-uuid",
         Box::new(
@@ -254,6 +222,7 @@ pub fn add_helpers(hb: &mut Handlebars) -> Result<(), Error> {
             },
         ),
     );
+    // to-field-name generates the symbol for the field name, e.g., FIELD_TITLE_NAME
     hb.register_helper(
         "to-field-name",
         Box::new(
@@ -281,21 +250,20 @@ pub fn add_helpers(hb: &mut Handlebars) -> Result<(), Error> {
     Ok(())
 }
 
-// don't need this anymore
-//  #![feature(min_const_generics)]
-//            pub(crate) fn lookup_label<const N: usize>(
-
 pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
     let templates: Vec<(&str, &str)> = vec![
         (
+            // begin the main crate source file lib.rs
             "lib_main",
             r#"#![allow(dead_code, unused_imports)]
             /// Zenkit Workspace {{ workspace }}
-            /// {{workspace_desc}}
+            /// {{ workspace_desc }}
+            //  {{ generated_banner }}
 
             use std::fmt;
             // use and re-export
-            pub use zenkit::{init_api, get_api, types::{ID,Entry,GetEntriesRequest,JsonMap,TextFormat}, ApiClient, ApiConfig};
+            pub use zenkit::{init_api, get_api, ApiClient, ApiConfig,
+                             types::{ID,DateTime,Entry,GetEntriesRequest,JsonMap,TextFormat,Utc}};
 
             {{#each modules ~}}
             mod {{ this }};
@@ -361,7 +329,7 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
             }
             
             ///
-            /// Workspace {{ to-workspace-class workspace }}
+            /// Workspace "{{ workspace }}"
             /// {{ workspace_desc }}
             ///
             pub const {{ to-workspace-id workspace }}: ID = {{ workspace_id }};
@@ -389,28 +357,29 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
                 }
                 Ok(ooo_entries)
             }
-
-            "#,
+"#,
         ),
         (
             "start_list_impl",
             r#"#![allow(dead_code, unused_imports)]
+            //! {{ list_struct }} {{list_desc}}
+            //  {{ generated_banner }}
             use crate::{lookup_label, Error};
             use serde_json::{self, json, Value};
             use std::{convert::AsRef, rc::Rc, str::FromStr};
-            use zenkit::{get_api, types::{Entry, File, JsonMap, TextFormat, ID}};
+            use zenkit::{get_api, types::{DateTime, Entry, File, ID, JsonMap, TextFormat, Utc}};
             
-            /// {{ to-list-class list }} {{list_desc}}
+            /// {{ list_struct }} {{list_desc}}
             ///
             pub const {{ to-list-id list }}: ID = {{ list_id }};
             pub const {{ to-list-uuid list }}: &str = "{{ list_uuid }}";
             pub const {{ to-list-name list }}: &str = "{{ list }}";
 
-            /// {{ to-list-class list }} - List of {{ item_plural }}
+            /// {{ list_struct }} - List of {{ item_plural }}
             /// {{list_desc}}
-            pub struct {{ to-list-class list }} { }
+            pub struct {{ list_struct }} { }
 
-            impl {{ to-list-class list }} {
+            impl {{ list_struct }} {
 
                 /// fetch {{ item }} by its ID
                 pub async fn get( {{ to_snake_case item }}_id: ID) -> Result<{{ item }},Error> {
@@ -445,7 +414,7 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
                 }
             }
 
-            /// {{ item }} (item of List '{{ list }})' {{list_desc}}
+            /// {{ item }} (item of List '{{ list }}') {{list_desc}}
             pub struct {{ item }} {
                 obj: Rc<Entry>
             }
@@ -470,13 +439,12 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
             /// label index used for converting from label name to id (sorted)
             const LABELS_{{ to_screaming_snake_case field }}: [(&'static str,u64);{{ len }}] = [
                 {{#each labels ~}}
-                ("LABEL_{{ to_screaming_snake_case ../field }}_{{ to_screaming_snake_case this }}",
-                   {{../item}}::LABEL_{{ to_screaming_snake_case ../field }}_{{ to_screaming_snake_case this }}_ID),
+                ("{{ this }}", {{../item}}::LABEL_{{ to_screaming_snake_case ../field }}_{{ to_screaming_snake_case this }}_ID),
                 {{/each ~}}
             ];
             "#,
         ),
-        // Finish the Item list impl with some misc getters
+        // Finish the Item list impl with some common getters
         (
             "end_list_impl",
             r#"
@@ -506,18 +474,18 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
                 self.obj.updated_by_displayname.as_deref()
             }
 
-            /// Returns date the item was created
-            pub fn get_created_date(&self) -> &str {
+            /// Returns date the item was created, in UTC
+            pub fn get_created_date(&self) -> &DateTime<Utc> {
                 &self.obj.created_at
             }
 
-            /// Returns date the item was last updated
-            pub fn get_updated_date(&self) -> &str {
+            /// Returns date the item was last updated, in UTC
+            pub fn get_updated_date(&self) -> &DateTime<Utc> {
                 &self.obj.updated_at
             }
 
-            /// Returns date the item was deprecated, or None if item isn't deprecated
-            pub fn get_deprecated_date(&self) -> Option<&String> {
+            /// Returns date the item was deprecated, in UTC, or None if item isn't deprecated
+            pub fn get_deprecated_date(&self) -> Option<&DateTime<Utc>> {
                 self.obj.deprecated_at.as_ref()
             }
 
@@ -547,9 +515,9 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
             }
 
             } // impl {{ item }}
-            "#,
+"#,
         ),
-        // impl New/Update MyItemBuilder {
+        // Define New/Update builder struct and beginning of impl
         (
             "start_item_builder",
             r#"
@@ -591,7 +559,7 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
             }
             "#,
         ),
-        // } end impl builder
+        // } end of impl for New/Update builder
         (
             "end_item_builder",
             r#"
@@ -713,10 +681,12 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
         (
             "get_date_field",
             r#"
-            /// Returns '{{ field }}' - {{ field_desc }} or None if unset
-            pub fn get_{{ to_snake_case field }}(&self) -> Option<&str> {
+            /// Returns '{{ field }}' in UTC {{ field_desc }}, or None if unset
+            pub fn get_{{ to_snake_case field }}(&self) -> Option<DateTime<Utc>> {
                 self.obj.fields.get("{{ field_uuid }}_date")
                     .map(|v| v.as_str())
+                    .unwrap_or_default()
+                    .map(|s| s.parse::<DateTime<Utc>>().ok())
                     .unwrap_or_default()
             }
             "#,
@@ -725,10 +695,12 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
         (
             "get_date_x_field",
             r#"
-            /// Returns '{{ field }}' - {{ field_desc }} or None if unset
-            pub fn get_date_{{ to_snake_case field }}(&self) -> Option<&str> {
+            /// Returns '{{ field }}' in UTC {{ field_desc }}, or None if unset
+            pub fn get_date_{{ to_snake_case field }}(&self) -> Option<DateTime<Utc>> {
                 self.obj.fields.get("{{ field_uuid }}_date")
                     .map(|v| v.as_str())
+                    .unwrap_or_default()
+                    .map(|s| s.parse::<DateTime<Utc>>().ok())
                     .unwrap_or_default()
             }
             "#,
@@ -1069,8 +1041,8 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
             "set_date_field",
             r#"
             /// Sets date {{ field }}. {{field_desc}}
-            pub fn set_{{ to_snake_case field }}<T:AsRef<str>>(&mut self, date: T) -> &mut {{ builder }} {
-                self.set_s("{{ field_uuid }}_date", date.as_ref().to_string());
+            pub fn set_{{ to_snake_case field }}(&mut self, date: &DateTime<Utc>) -> &mut {{ builder }} {
+                self.set_s("{{ field_uuid }}_date", date.to_string());
                 self
             }
             "#,
@@ -1257,7 +1229,7 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
             r#"
             {{#if field_single_value ~}}
             /// Set {{ field }} by label-id. {{field_desc}}
-            pub fn set_{{ to_snake_case field }}(&mut self, id: ID) -> &mut {{ builder }} {
+            pub fn set_{{ to_snake_case field }}_id(&mut self, id: ID) -> &mut {{ builder }} {
                 self.set_v("{{ field_uuid }}_categories", json!(vec![id]));
                 {{#if is_update_builder~}}
                 self.set_s("updateAction", "replace".to_string());
@@ -1265,7 +1237,7 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
                 self
             }
             /// Set {{ field }} by label-name. {{field_desc}}
-            pub fn set_{{ to_snake_case field }}_label(&mut self, label: &str) -> &mut {{ builder }} {
+            pub fn set_{{ to_snake_case field }}(&mut self, label: &str) -> &mut {{ builder }} {
                 match lookup_label(&{{ item }}::LABELS_{{ to_screaming_snake_case field }},label) {
                         Some(id) => {
                             self.set_v("{{ field_uuid }}_categories", json!(vec![id]));
@@ -1274,7 +1246,7 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
                             {{/if~}}
                         },
                         None => {
-                            self.errs.push(format!("Label {} not found for set_{{ to_snake_case field }}_label",
+                            self.errs.push(format!("Label '{}' not found for set_{{ to_snake_case field }}_label",
                                     label));
                         }
                 }
@@ -1352,7 +1324,9 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
         // Cargo.toml
         (
             "cargo_toml",
-            r#"[package]
+            r#"# Cargo.toml
+# {{ generated_banner }}
+[package]
 name = "{{ crate }}"
 version = "0.1.0"
 authors = ["author <mail@example.com>"]
@@ -1363,12 +1337,12 @@ categories = ["api-bindings"]
 
 [dependencies]
 serde_json = "1.0"
-zenkit = { version="0.3" }
-reqwest = { version="0.10", features=["json"] }
+zenkit = { version="0.5" }
+reqwest = { version="0.11", features=["json"] }
 
 [lib]
 path = "src/lib.rs"
-            "#,
+"#,
         ),
     ];
 

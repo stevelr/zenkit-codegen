@@ -5,27 +5,35 @@ use crate::{
 use bytes::BytesMut;
 use handlebars::Handlebars;
 use inflector::{
-    cases::{classcase::to_class_case, snakecase::to_snake_case},
+    cases::{classcase::to_class_case, pascalcase::to_pascal_case, snakecase::to_snake_case},
     string::pluralize::to_plural,
     string::singularize::to_singular,
 };
 use serde_json::{json, Value};
 use std::{collections::BTreeMap as Map, sync::Arc};
 use zenkit::{
-    types::{ChildList, Element, ElementCategoryId, NumericType, Workspace},
-    ApiClient, ListInfo,
+    types::{ChildList, Element, ElementCategoryId, ListInfo, NumericType, Workspace},
+    ApiClient,
 };
 
+/// template variables
 type RenderMap = Map<&'static str, Value>;
 
+/// Instance data for generator
 pub struct Generator<'gen> {
+    /// Handlebars processor
     hb: Handlebars<'gen>,
+    /// Generated output text
     buf: BytesMut,
+    /// Template variables
     data: RenderMap,
 }
 
+/// Types of mutable objects in builder patterns
 enum BuilderType {
+    /// New list entry
     New,
+    /// Change to existing list entry
     Update,
 }
 
@@ -71,16 +79,20 @@ impl<'gen> Generator<'gen> {
         self.data.insert(k, Value::Bool(b));
     }
 
-    /// Generate everything specific to a list
-    ///  - struct MyList (with get(id), create(), and update())
-    ///  - calls gen_item_impl to generate item getters and label lookups
+    /// Generate everything specific to a list:   struct MyList { .... }
+    ///  - common getters: (get_id,get_uuid)
+    ///  - item getters and label lookups in gen_item_impl
+    ///  - builder initializers create() and update()
     pub fn gen_list(&mut self, list_info: &Arc<ListInfo>) -> Result<(), Error> {
         let list = list_info.list();
+        // define list template vars
         self.set("list", &list.name);
         self.set_id("list_id", list.id);
         self.set("list_uuid", &list.uuid);
         self.set("list_desc", &list.description);
+        self.set("list_struct", format!("{}List", to_pascal_case(&list.name)));
 
+        // generate item name, singular and plural
         let item = if let Some(ref item_name) = list.item_name {
             // they specified item name in ui
             to_class_case(&item_name)
@@ -117,12 +129,14 @@ impl<'gen> Generator<'gen> {
         if let Some(ref categories) = field.element_data.predefined_categories {
             let mut labels: Vec<&String> = Vec::new();
             for c in categories {
-                // is_Field_Category() -> bool
+                // define label template vars
                 self.set("label", &c.name);
                 self.set_id("label_id", c.id);
+                // generate "fn is_LABEL() -> bool" for each label
                 self.render("category_getter_per_label")?;
                 labels.push(&c.name);
             }
+            // clear label vars
             self.data.remove("label");
             self.data.remove("label_id");
 
@@ -135,6 +149,7 @@ impl<'gen> Generator<'gen> {
             self.data.insert("labels", json!(labels));
             self.render("category_label_lookup")?;
 
+            // clear remaining label template vars
             self.data.remove("lookup_array");
             self.data.remove("len");
             self.data.remove("labels");
@@ -149,12 +164,13 @@ impl<'gen> Generator<'gen> {
         // const LABEL...
         if let Some(ref categories) = field.element_data.predefined_categories {
             for c in categories {
-                // is_Field_Category() -> bool
+                // define label template vars
                 self.set("label", &c.name);
                 self.set_id("label_id", c.id);
-                // label-specific setter
+                // render label-specific setter
                 self.render("category_setter_per_label")?;
             }
+            // clear label template vars
             self.data.remove("label");
             self.data.remove("label_id");
         }
@@ -172,6 +188,7 @@ impl<'gen> Generator<'gen> {
             .iter()
             .filter(|f| f.deprecated_at.is_none())
         {
+            // define field template vars
             self.set("field", &field.name);
             self.set("field_uuid", &field.uuid);
             self.set_id("field_id", field.id);
@@ -179,6 +196,7 @@ impl<'gen> Generator<'gen> {
             self.set_bool("field_single_value", !field.element_data.multiple);
             self.set_bool("field_multiple_value", field.element_data.multiple);
 
+            // define field id,uuid, and name constants
             self.render("field_const")?;
 
             match field.element_category {
@@ -231,6 +249,7 @@ impl<'gen> Generator<'gen> {
             }?;
         }
 
+        // clear field template vars
         for f in [
             "field",
             "field_uuid",
@@ -256,6 +275,7 @@ impl<'gen> Generator<'gen> {
         list_info: &Arc<ListInfo>,
         builder_type: BuilderType, // either new or update
     ) -> Result<(), Error> {
+        // set template vars for builder type
         match builder_type {
             BuilderType::New => {
                 self.set_bool("is_new_builder", true);
@@ -290,6 +310,7 @@ impl<'gen> Generator<'gen> {
             .iter()
             .filter(|f| f.deprecated_at.is_none())
         {
+            // set field template vars
             self.set("field", &field.name);
             self.set("field_uuid", &field.uuid);
             self.set_id("field_id", field.id);
@@ -325,7 +346,7 @@ impl<'gen> Generator<'gen> {
                 }
                 ElementCategoryId::SubEntries => self.render("set_subitems"),
 
-                // No api support for updating these
+                // No api support for setting or updating these
                 ElementCategoryId::DateCreated
                 | ElementCategoryId::DateUpdated
                 | ElementCategoryId::DateDeprecated
@@ -344,6 +365,7 @@ impl<'gen> Generator<'gen> {
         self.render("builder_execute")?;
         self.render("end_item_builder")?;
 
+        // clear field template vars
         for f in [
             "field",
             "field_uuid",
@@ -368,14 +390,18 @@ impl<'gen> Generator<'gen> {
         Ok(())
     }
 
-    /// Generates rust source code for Zenkit business model.
-    /// Output is intended to be a crate library, generated in output dir
+    /// Generates Rust library crate for business data model based on Zenkit workspace.
+    /// To support a continuous integration workflow, source *.rs files are always overwritten,
+    /// so they reflect the most recent schema; but if Cargo.toml exists, Cargo.toml.gen
+    /// is created, so that crate-level modifications are not overwritten.
     pub async fn gen_workspace<'ws>(
         &mut self,
         api: &ApiClient,
         workspace: Arc<Workspace>,
         output_dir: &str,
     ) -> Result<Vec<String>, Error> {
+        // define workspace template vars
+        self.set("generated_banner", get_generated_banner());
         self.set("workspace", &workspace.name);
         self.set("workspace_uuid", &workspace.uuid);
         self.set_id("workspace_id", workspace.id);
@@ -406,17 +432,23 @@ impl<'gen> Generator<'gen> {
         self.write_to(&fpath)?;
         files.push(fpath);
 
-        // write Cargo.toml.sample
         let crate_name = to_snake_case(&workspace.name);
         self.set("crate", &crate_name);
         self.render("cargo_toml")?;
-        let fpath = format!("{}/Cargo.toml.sample", output_dir);
+
+        // For lib.rs and all list modules, we overwrite any existing files,
+        // but if Cargo.toml exists don't overwrite in case it was locally modified.
+        let mut fpath = format!("{}/Cargo.toml", output_dir);
+        if std::fs::metadata(&fpath).is_ok() {
+            fpath.push_str(".gen");
+        }
         self.write_to(&fpath)?;
         files.push(fpath);
 
         Ok(files)
     }
 
+    /// Render a template with the current dictionary
     fn render(&mut self, tmpl: &str) -> Result<(), Error> {
         self.buf
             .extend(self.hb.render(tmpl, &self.data)?.as_bytes());
@@ -427,4 +459,20 @@ impl<'gen> Generator<'gen> {
     pub fn clone_reset(&mut self) -> BytesMut {
         self.buf.split()
     }
+}
+
+/// Banner for file header indicating automatic generation
+fn get_generated_banner() -> String {
+    format!(
+        "Generated by {} v{} on {}",
+        env!("CARGO_BIN_NAME"),
+        env!("CARGO_PKG_VERSION"),
+        get_display_time()
+    )
+}
+
+/// Returns current time UTC in RFC 3339 and ISO 8601 format, e.g., "2020-01-01T14:00:00Z"
+fn get_display_time() -> String {
+    use chrono::{SecondsFormat, Utc};
+    Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true)
 }

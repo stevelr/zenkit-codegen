@@ -1,5 +1,8 @@
-Code generator to create Zenkit client library in Rust, based on
-user-defined workspace schema. Like ORM for Zenkit.
+Generate Zenkit ORM client library in Rust, based on
+user-defined workspace schema.
+
+The output of this program is a new library crate that can be
+imported into a Rust app, or compiled into WASM.
 
 Greatly simplifies writing reliable and performant Rust clients for Zenkit - can
 substantially reduce (by more than 50%) the amount of code required 
@@ -25,20 +28,23 @@ which you can obtain from your account profile on zenkit.com.
 
 ```sh
 # Generate source code
-# Parameters are -o output_dir (will be created)
+# Parameters are -o output_dir (will be created if it doesn't exist)
 #                -w workspace_name
 zk-codegen -o my-lib -w "My Workspace"
 
-# Cargo.toml is generated with the ".sample" suffix
-# so that regenerating code doesn't overwrite any edits to Cargo.toml.
-cp Cargo.toml.sample Cargo.toml
-
-# Compile your new library!
+# The command above generates output_dir/Cargo.toml and
+# output_dir/src/*.rs. The crate should build as-is
+cd output_dir
 cargo build
 ```
 
-If you get any errors during code generation or compilation, it's a bug.
-Please file a github issue.
+On subsequent runs, any files in src/ are overwritten, so that they
+reflect the current schema at the time zk-codegen was run,
+but, to avoid overwriting manual updates to Cargo.toml, 
+new versions of that file will be saved as Cargo.toml.gen
+
+If you get any errors during code generation or compilation, it's a bug
+in this crate. Please file a github issue.
 
 
 ## Examples

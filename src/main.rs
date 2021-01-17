@@ -5,7 +5,6 @@ mod error;
 use error::Error;
 mod gen;
 use gen::Generator;
-
 mod templates;
 
 // name of the environment variable holding the token
@@ -32,7 +31,8 @@ struct Opt {
     output: String,
 }
 
-#[tokio::main]
+/// main entry point
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     let opt = Opt::parse();
     if let Err(e) = run(opt).await {
