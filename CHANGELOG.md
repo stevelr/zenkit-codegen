@@ -1,5 +1,10 @@
 CHANGELOG for zenkit-codegen https://github.com/stevelr/zenkit-codegen
 
+v0.5.1 2021-01-23
+
+- update dependency to zenkit-0.6
+- added License files to repo. License (MIT or Apache-2.0) is unchanged.
+
 v0.5.0 2021-01-17
 
 - fix: fixed label lookup
