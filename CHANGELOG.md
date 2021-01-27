@@ -1,5 +1,10 @@
 CHANGELOG for zenkit-codegen https://github.com/stevelr/zenkit-codegen
 
+v0.5.2 2021-01-27
+
+- rebuilt with latest zenkit 0.6.1, which includes fix for
+  parsing date fields with no time
+
 v0.5.1 2021-01-23
 
 - update dependency to zenkit-0.6
