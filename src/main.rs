@@ -1,5 +1,6 @@
 use clap::Clap;
 use zenkit::{init_api, ApiConfig};
+use config::Config;
 
 mod error;
 use error::Error;
@@ -7,20 +8,30 @@ mod gen;
 use gen::Generator;
 mod templates;
 
-// name of the environment variable holding the token
-const ZENKIT_API_TOKEN_VAR: &str = "ZENKIT_API_TOKEN";
-
 /// Zenkit Rust-client code generator. Source and docs at https://github.com/stevelr/zenkit-codegen
 #[derive(Clap, PartialEq, Debug)]
 #[clap(name = env!("CARGO_BIN_NAME"), version = env!("CARGO_PKG_VERSION"))]
 struct Opt {
-    /// API token. Defaults to environment var ZENKIT_API_TOKEN
+    /// API token. For protection of secrets such as token, passing on the command line
+    /// is discouraged. It can be set in a config file (using -c) option,
+    /// or in an environment variable `ZENKIT_TOKEN` (or (deprecated) `ZENKIT_API_TOKEN`)
     #[clap(short, long)]
     token: Option<String>,
 
-    /// Workspace name, id, or uuid.
+    /// Workspace name, id, or uuid. Can be set in config file
+    /// or in environment variable ZENKIT_WORKSPACE
     #[clap(short, long)]
-    workspace: String,
+    workspace: Option<String>,
+
+    /// path to config file containing keys zenkit.token and zenkit.workspace
+    /// Example (TOML format):
+    /// ```toml
+    /// [zenkit]
+    /// token = "000000"
+    /// workspace = "My Workspace"
+    /// ```
+    #[clap(short, long)]
+    config: Option<String>,
 
     /// Test builder
     #[clap(long)]
@@ -42,20 +53,27 @@ async fn main() {
 }
 
 async fn run(opt: Opt) -> Result<(), Error> {
+
+    let settings = load_config(opt.config)?;
+
     // attempt to create output directory with src subdirectory
     let src_dir = format!("{}/src", &opt.output);
     std::fs::create_dir_all(&src_dir)?;
 
-    let token = match opt.token {
-        Some(token) => token,
-        None => std::env::var(&ZENKIT_API_TOKEN_VAR)
-            .map_err(|_| Error::Message(format!("Missing env var {}", ZENKIT_API_TOKEN_VAR)))?,
+    let token = match settings.get_str("zenkit.token") {
+        Ok(token) => token,
+        Err(_) => settings.get_str("zenkit.api.token")
+            .map_err(|_| Error::Message(
+                "Missing zenkit token. add to config file with `-c` option or set in environment as ZENKIT_TOKEN".into()))?,
     };
-    let api = init_api(ApiConfig {
-        token,
-        ..Default::default()
-    })?;
-    let ws = api.get_workspace(&opt.workspace).await?;
+    let api = init_api(ApiConfig { token, ..Default::default() })?;
+    let workspace = match opt.workspace {
+        Some(name) => name,
+        None => settings.get_str("zenkit.workspace").map_err(|_| Error::Message(
+                "Workspace must be specified in config file with `-c` option or in environment as ZENKIT_WORKSPACE".into())
+        )?,
+    };
+    let ws = api.get_workspace(&workspace).await?;
 
     let mut gen = Generator::init()?;
     let files = gen.gen_workspace(&api, ws, &opt.output).await?;
@@ -63,6 +81,18 @@ async fn run(opt: Opt) -> Result<(), Error> {
     // Run rustfmt
     format_results(files)?;
     Ok(())
+}
+
+/// Build config from
+///  - cli option "-c CONFIG-FILE"
+///  - environment overrides of the form "ZENKIT_"
+fn load_config(file: Option<String>) -> Result<Config, Error> {
+    let mut settings = Config::default();
+    if let Some(opt_path) = file {
+        settings.merge(config::File::with_name(&opt_path))?;
+    }
+    settings.merge(config::Environment::with_prefix("zenkit").separator("_"))?;
+    Ok(settings)
 }
 
 fn format_results(files: Vec<String>) -> Result<(), Error> {

@@ -311,13 +311,13 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
             /// Initialize zenkit using api token.
             /// If token is None, the value will be taken from the environment variable ZENKIT_API_TOKEN.
             /// Returns error if token is undefined
-            pub fn initialize_zenkit_api(token: Option<&'_ str>, endpoint: Option<&'_ str>) -> Result<(), Error>
+            pub fn initialize_zenkit_api(token: Option<&'_ str>, endpoint: Option<&'_ str>) -> Result<&'static ApiClient, Error>
             {
                 let defaults = ApiConfig::default();
                 let token = token.unwrap_or(&defaults.token).to_string();
                 let endpoint = endpoint.unwrap_or(&defaults.endpoint).to_string();
-                let _ = init_api(ApiConfig{token, endpoint}).map_err(|e| Error::Message(e.to_string()))?;
-                Ok(())
+                let zk = init_api(ApiConfig{token, endpoint}).map_err(|e| Error::Message(e.to_string()))?;
+                Ok(zk)
             }
 
             /// Find id for label name using binary search
@@ -327,7 +327,7 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
                     Err(_) => None,
                 }
             }
-            
+
             ///
             /// Workspace "{{ workspace }}"
             /// {{ workspace_desc }}
@@ -368,7 +368,7 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
             use serde_json::{self, json, Value};
             use std::{convert::AsRef, rc::Rc, str::FromStr};
             use zenkit::{get_api, types::{DateTime, Entry, File, ID, JsonMap, TextFormat, Utc}};
-            
+
             /// {{ list_struct }} {{list_desc}}
             ///
             pub const {{ to-list-id list }}: ID = {{ list_id }};
@@ -405,7 +405,7 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
 
                 /// Initialize builder for creating a new {{item}}
                 pub fn create() -> New{{ item }}Builder {
-                    New{{ item }}Builder::new() 
+                    New{{ item }}Builder::new()
                 }
 
                 /// Creates builder for updating an existing {{item}}
@@ -435,7 +435,7 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
             pub fn label_id_for_{{ to_snake_case field }}(label: &str) -> Option<ID> {
                 lookup_label(&{{item}}::LABELS_{{ to_screaming_snake_case field }}, label)
             }
-            
+
             /// label index used for converting from label name to id (sorted)
             const LABELS_{{ to_screaming_snake_case field }}: [(&'static str,u64);{{ len }}] = [
                 {{#each labels ~}}
@@ -494,7 +494,7 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
                 self.obj.deprecated_by
             }
 
-            /// Returns the default sort rank within the list 
+            /// Returns the default sort rank within the list
             pub fn get_sort_order(&self) -> f32 {
                 self.obj.sort_order
             }
@@ -532,7 +532,7 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
                 {{#if is_update_builder~}}
                 item_id: ID,
                 {{/if~}}
-            }   
+            }
 
             impl {{ builder }} {
                 {{#if is_update_builder}}
@@ -639,7 +639,7 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
         (
             "get_formula_field",
             r#"
-            /// Returns value of formula field '{{ field }}', or None 
+            /// Returns value of formula field '{{ field }}', or None
             /// if the field isn't calculated, or if there was an error calculating the value.
             /// For description of the error, use get_{{ to_snake_case field }}_error()
             pub fn get_{{ to_snake_case field }}(&self) -> Option<f64> {
@@ -717,7 +717,7 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
                 self.obj.fields.get("{{ field_uuid }}_categories")
                     .map(|v| v.as_array())
                     .unwrap_or_default()
-                    .map(|v| v.iter() 
+                    .map(|v| v.iter()
                         .any(|n| n == {{ item }}::LABEL_{{ to_screaming_snake_case field }}_{{ to_screaming_snake_case label }}_ID))
                     .unwrap_or_default()
             }
@@ -944,7 +944,7 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
         (
             "get_files_field",
             r#"
-            /// Returns files from '{{ field }}' - {{ field_desc }} 
+            /// Returns files from '{{ field }}' - {{ field_desc }}
             pub fn get_{{ to_snake_case field }}(&self) -> Vec<File> {
                 match self.obj.fields.get("{{ field_uuid }}_filesData") {
                     Some(v) => match serde_json::from_value::<Vec<File>>(v.clone()) {

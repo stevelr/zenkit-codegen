@@ -1,5 +1,24 @@
 CHANGELOG for zenkit-codegen https://github.com/stevelr/zenkit-codegen
 
+v0.5.3
+
+- generated initialize_zenkit_api returns ApiClient instead of ()
+- integrated config crate for config handling 
+  There are now three ways to specify the parameters for api token and workspace;
+  - in a config file, using the `-c CONFIG_FILE` option formatted in TOML like this:
+```toml
+[zenkit]
+token = "0000"
+workspace = "My Workspace"
+```
+  - in the environment, as ZENKIT_TOKEN and ZENKIT_WORKSPACE, respectively.
+    The variable name ZENKIT_API_TOKEN is deprecated.
+  - on the command line with  -t/--token and -w/--workspace.  Passing
+    secrets on the command line is usually discouraged for security
+    reasons.
+  - updated dependencies (bytes-1.0, strum-macros-0.20)
+
+
 v0.5.2 2021-01-27
 
 - rebuilt with latest zenkit 0.6.1, which includes fix for
