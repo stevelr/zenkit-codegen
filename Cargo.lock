@@ -1532,6 +1532,8 @@ dependencies = [
 [[package]]
 name = "zenkit"
 version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37008659d2507cf9444b8b65c555c0b606d2a5fa621d8294eb733f846ee78d05"
 dependencies = [
  "bytes",
  "chrono",
