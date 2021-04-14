@@ -88,6 +88,7 @@ impl<'gen> Generator<'gen> {
         // define list template vars
         self.set("list", &list.name);
         self.set_id("list_id", list.id);
+        self.set("list_short_id", &list.short_id);
         self.set("list_uuid", &list.uuid);
         self.set("list_desc", &list.description);
         self.set("list_struct", format!("{}List", to_pascal_case(&list.name)));
@@ -117,7 +118,7 @@ impl<'gen> Generator<'gen> {
         // update item builder
         self.gen_builder(&list_info, BuilderType::Update)?;
 
-        for f in ["list", "list_id", "list_uuid", "item"].iter() {
+        for f in ["list", "list_id", "list_short_id", "list_uuid", "item"].iter() {
             self.data.remove(f);
         }
 

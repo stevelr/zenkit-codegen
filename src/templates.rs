@@ -101,6 +101,30 @@ pub fn add_helpers(hb: &mut Handlebars) -> Result<(), Error> {
             },
         ),
     );
+    // to-list-short-id generates the list short-id symbol, e.g.: LIST_TICKET_SHORT_ID
+    hb.register_helper(
+        "to-list-short-id",
+        Box::new(
+            |h: &Helper,
+             _r: &Handlebars,
+             _: &Context,
+             _rc: &mut RenderContext,
+             out: &mut dyn Output|
+             -> HelperResult {
+                out.write(&format!(
+                    "LIST_{}_SHORT_ID",
+                    to_screaming_snake_case(
+                        h.param(0)
+                            .ok_or_else(|| RenderError::new("param not found"))?
+                            .value()
+                            .as_str()
+                            .ok_or_else(|| RenderError::new("not string"))?
+                    )
+                ))?;
+                Ok(())
+            },
+        ),
+    );
     // to-list-uuid generates the list id symbol, e.g.: LIST_TICKET_UUID
     hb.register_helper(
         "to-list-uuid",
@@ -271,6 +295,7 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
             {{/each}}
 
             const ZENKIT_API_TOKEN_VAR: &str = "ZENKIT_API_TOKEN";
+            pub(crate) const ZENKIT_ITEM_URL_BASE: &str = "https://base.zenkit.com/i/";
 
             /// Errors returned by this crate
             #[derive(Debug)]
@@ -372,6 +397,7 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
             /// {{ list_struct }} {{list_desc}}
             ///
             pub const {{ to-list-id list }}: ID = {{ list_id }};
+            pub const {{ to-list-short-id list }}: &str = "{{ list_short_id }}";
             pub const {{ to-list-uuid list }}: &str = "{{ list_uuid }}";
             pub const {{ to-list-name list }}: &str = "{{ list }}";
 
@@ -448,6 +474,12 @@ pub fn add_templates(hb: &mut Handlebars) -> Result<(), Error> {
         (
             "end_list_impl",
             r#"
+
+            /// Returns url to zenkit item
+            pub fn get_zenkit_url(&self) -> String {
+                format!("{}{}/{}/", crate::ZENKIT_ITEM_URL_BASE,
+                    {{ to-list-short-id list }}, self.obj.short_id)
+            }
 
             /// Returns the item's display string (based on list's primary field)
             pub fn get_display_string(&self) -> &str {

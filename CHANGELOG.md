@@ -1,5 +1,11 @@
 CHANGELOG for zenkit-codegen https://github.com/stevelr/zenkit-codegen
 
+v0.5.4
+- added get_zenkit_url function for list items
+- added const LIST_*_SHORT_ID for each list
+- updated dependencies (config 0.11, handlebars_misc_helpers 0.11)
+
+
 v0.5.3
 
 - generated initialize_zenkit_api returns ApiClient instead of ()
