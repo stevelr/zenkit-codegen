@@ -28,7 +28,7 @@ tokio = { version="1.0", features=["rt", "macros", "fs"]}
 
 [dependencies.zenkit]
 version = "0.6"
-path = "../zenkit-rs"
+#path = "../zenkit-rs"
 
 [[bin]]
 name = "zk-codegen"
